@@ -5,9 +5,11 @@ import pytest
 
 from look.app import app
 
+
 @pytest.fixture
 def client():
     return testing.TestClient(app)
+
 
 # pytest will inject the object returned by the "client" function
 # as an additional parameter.
