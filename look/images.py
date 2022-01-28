@@ -59,6 +59,7 @@ class Item:
         except IOError:
             raise falcon.HTTPNotFound()
 
+
 class ImageStore:
 
     _CHUNK_SIZE_BYTES = 4096
