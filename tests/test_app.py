@@ -63,6 +63,7 @@ def test_post_image(client, mock_store):
     assert isinstance(saver_call[0][0], InputWrapper)
     assert saver_call[0][1] == image_content_type
 
+
 def test_saving_image(monkeypatch):
     # this still requires mocks, but they are more localized and do not
     # have to be monkey-patched into standard library modules
