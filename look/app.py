@@ -1,3 +1,5 @@
+import os
+
 import falcon
 
 from .images import ImageStore, Resource
@@ -11,5 +13,6 @@ def create_app(image_store):
 
 
 def get_app():
-    image_store = ImageStore('.')
+    storage_path = os.environ.get('LOOK_STORAGE_PATH', '.')
+    image_store = ImageStore(storage_path)
     return create_app(image_store)
