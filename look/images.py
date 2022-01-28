@@ -1,18 +1,33 @@
 import io
-import mimetypes
 import os
+import re
 import uuid
+import mimetypes
 
 import falcon
 import msgpack
 
+ALLOWED_IMAGE_TYPES = (
+    'image/gif',
+    'image/jpeg',
+    'image/png',
+)
 
-class Resource:
+
+def validate_image_type(req, resp, resource, params):
+    if req.content_type not in ALLOWED_IMAGE_TYPES:
+        msg = 'Image type not allowed. Must be PNG, JPEG, or GIF'
+        raise falcon.HTTPBadRequest(title='Bad request', description=msg)
+
+
+class Collection:
 
     def __init__(self, image_store):
         self._image_store = image_store
 
     def on_get(self, req, resp):
+        # TODO: Modify this to return a list of href's based on
+        # what images are actually available.
         doc = {
             'images': [
                 {
@@ -25,18 +40,30 @@ class Resource:
         resp.content_type = falcon.MEDIA_MSGPACK
         resp.status = falcon.HTTP_200
 
+    @falcon.before(validate_image_type)
     def on_post(self, req, resp):
         name = self._image_store.save(req.stream, req.content_type)
         resp.status = falcon.HTTP_201
         resp.location = '/images/' + name
 
 
+class Item:
+
+    def __init__(self, image_store):
+        self._image_store = image_store
+
+    def on_get(self, req, resp, name):
+        resp.content_type = mimetypes.guess_type(name)[0]
+        resp.stream, resp.content_length = self._image_store.open(name)
+
+
 class ImageStore:
 
     _CHUNK_SIZE_BYTES = 4096
+    _IMAGE_NAME_PATTERN = re.compile(
+        '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z]{2,4}$'
+    )
 
-    # Note the use of dependency injection for standard library
-    # methods. We'll use these later to avoid monkey-patching.
     def __init__(self, storage_path, uuidgen=uuid.uuid4, fopen=io.open):
         self._storage_path = storage_path
         self._uuidgen = uuidgen
@@ -56,3 +83,14 @@ class ImageStore:
                 image_file.write(chunk)
 
         return name
+
+    def open(self, name):
+        # Always validate untrusted input!
+        if not self._IMAGE_NAME_PATTERN.match(name):
+            raise IOError('File not found')
+
+        image_path = os.path.join(self._storage_path, name)
+        stream = self._fopen(image_path, 'rb')
+        content_length = os.path.getsize(image_path)
+
+        return stream, content_length
